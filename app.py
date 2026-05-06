@@ -9,11 +9,15 @@ import traceback
 import requests
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
+import asyncio
 from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
 
+from stock.twse import TWSE
+
 
 # ====================================================
+twse = TWSE()
 
 app = Flask(__name__)
 CORS(app)
@@ -26,8 +30,6 @@ current_time_taiwan = datetime.now(taiwan_tz)
 version = current_time_taiwan.strftime("v%Y-%m%d-%H%M")
 
 # ====================================================
-
-
 class APIResponse:
     """Static class for generating API responses"""
 
@@ -66,19 +68,53 @@ class APIResponse:
         return response, status_code
 
 
+
+
 @app.route("/api/fetch_data", methods=["POST"])
 def fetch_data():
     """
-    Endpoint to fetch twse stock data
-
+    部署時初始化：抓取近兩年資料
     """
+    try:
+        two_years_ago = (pd.Timestamp.now() - pd.DateOffset(years=2)).strftime("%Y%m%d")
+        now = pd.Timestamp.now().strftime("%Y%m%d")
+        
+        # 在同步 Flask 中執行非同步函式
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(
+            twse.process_range(two_years_ago, now, for_update=False)
+        )
+        loop.close()
+
+        return jsonify(APIResponse.success(message=f"Initialization complete: {result}"))
+    except Exception as e:
+        logger.error(traceback.format_exc())
+        return APIResponse.error(message="Fetch failed", details=str(e))
 
 @app.route("/api/update_data", methods=["POST"])
 def update_data():
     """
-    Endpoint to update twse stock data
-
+    每日更新：抓取當日資料 (或指定範圍)
     """
+    try:
+        data = request.json or {}
+        # 允許外部傳入日期，若無則預設今天
+        target_date = data.get("date", pd.Timestamp.now().strftime("%Y%m%d"))
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        # 使用 for_update=True 確保是追加到檔案末尾
+        result = loop.run_until_complete(
+            twse.process_range(target_date, target_date, for_update=True)
+        )
+        loop.close()
+
+        return jsonify(APIResponse.success(message=f"Update complete: {result}"))
+    except Exception as e:
+        logger.error(traceback.format_exc())
+        return APIResponse.error(message="Update failed", details=str(e))
+
 
 @app.get("/health")
 def health():

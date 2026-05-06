@@ -15,6 +15,9 @@ class TWSE:
     def __init__(self):
         self.semaphore = asyncio.Semaphore(3)
         self.twse_recent_data = "stock/database/twse/twse_recent_data.csv"
+        self.base_dir = "stock/database/twse"
+        os.makedirs(self.base_dir, exist_ok=True)
+        
         self.exclude_pattern = (
             r'售|購|牛|熊|展|'          # 權證、展延相關 (最重要)
             r'N$|'                     # 結尾為 N 的通常是 ETN (指數投資證券)
@@ -25,6 +28,25 @@ class TWSE:
             r'恒生|國企|香港|'          # 國外市場 ETF (香港)
             r'越南|印度|歐洲|北美'       # 其他國外市場 ETF
         )
+
+    def _save_to_individual_files(self, df):
+        """ 將 DataFrame 拆分並追加到各別股票的 CSV """
+        filtered_df = df[
+            (df['證券代號'].str.isdigit()) & 
+            (~df['證券名稱'].str.contains(self.exclude_pattern, regex=True)) &
+            (df['證券代號'].str.len().between(4, 6))
+        ].copy()
+
+        grouped = filtered_df.groupby('證券代號')
+        for symbol, group_df in grouped:
+            clean_symbol = str(symbol).strip()
+            save_path = f"{self.base_dir}/{clean_symbol}_twse_recent_data.csv"
+            
+            # 如果檔案已存在，則追加且不寫入 Header
+            file_exists = os.path.isfile(save_path)
+            group_df.to_csv(save_path, index=False, encoding="utf-8-sig", 
+                           mode='a' if file_exists else 'w', 
+                           header=not file_exists)
 
     async def fetch_daily_info(self, session, date: str):
         """
@@ -75,161 +97,40 @@ class TWSE:
                 
         return None
     
-    # 若之後要做成 API 可以將（fetch_recent_info, fetch_specific_info）整合在一起
-    async def fetch_recent_info(self):
+    async def process_range(self, start_date: str, end_date: str, for_update: bool = False):
         """
-        Fetch recent stock trading data for the past 2 years
-        - Store every 30 business days in a batch to avoid memory overflow
+        整合後的抓取邏輯
+        for_update=True: 追加模式
+        for_update=False: 覆蓋模式
         """
+        date_list = pd.bdate_range(start=start_date, end=end_date).strftime("%Y%m%d").tolist()
+        if not date_list:
+            return "No business days in range"
 
-         # --- First async process: fetch data from twse ---
-
-        two_years_ago = (pd.Timestamp.now() - pd.DateOffset(years=2)).strftime("%Y%m%d")
-        now = pd.Timestamp.now().strftime("%Y%m%d")
-        date_list = pd.bdate_range(start=two_years_ago, end=now).strftime("%Y%m%d").tolist()
-        print(f"🚀 Preparing to fetch data from {date_list[0]} to {date_list[-1]}, total {len(date_list)} business days...")
-
-        os.makedirs("stock/database/twse", exist_ok=True)
-        batch_size = 30  
-        first_write = True 
-       
+        batch_size = 30
         async with aiohttp.ClientSession() as session:
-            # Batch processing
             for i in range(0, len(date_list), batch_size):
                 batch_dates = date_list[i : i + batch_size]
-                print(f"📦 Processing Batch：{batch_dates[0]} ~ {batch_dates[-1]} ({i//batch_size + 1} Batch)")
-
                 tasks = [self.fetch_daily_info(session, date) for date in batch_dates]
                 results = await asyncio.gather(*tasks)
 
-                batched_df_list = []
-
-                for df in results:
-                    if df is not None:
-                        batched_df_list.append(df)
-
-                        # clean up memory to avoid OOM error
-                        del df
-                        gc.collect()
+                batched_df_list = [df for df in results if df is not None]
 
                 if batched_df_list:
                     batched_df = pd.concat(batched_df_list, ignore_index=True)
                     
-                    # first time to write
-                    if first_write:
-                        batched_df.to_csv(self.twse_recent_data, index=False, encoding="utf-8-sig", mode='w')
-                        first_write = False
-                    # after to append
-                    else:
-                        batched_df.to_csv(self.twse_recent_data, index=False, encoding="utf-8-sig", mode='a', header=False)
+                    # 1. 存入/更新大表 (Master CSV)
+                    mode = 'a' if (for_update or i > 0) else 'w'
+                    header = False if mode == 'a' else True
+                    batched_df.to_csv(self.twse_recent_data, index=False, encoding="utf-8-sig", mode=mode, header=header)
+
+                    # 2. 拆分並更新個股 CSV
+                    self._save_to_individual_files(batched_df)
 
                 del batched_df_list, results
                 gc.collect()
-
-        print(f"✅ 所有資料抓取完成，存檔至：{self.twse_recent_data}")
-
-        #  --- Second async process: separate data by stock symbol and save to individual csv files ---
-        print(f"🚀 Separating data by stock symbol...")
-        raw_df = pd.read_csv(self.twse_recent_data)
-    
-        filtered_df = raw_df[
-            (raw_df['證券代號'].str.isdigit()) & 
-            (~raw_df['證券名稱'].str.contains(self.exclude_pattern, regex=True)) &
-            (raw_df['證券代號'].str.len().between(4, 6))
-        ].copy()
-
-        print(f"🧹 過濾完成：原始筆數 {len(raw_df)} -> 過濾後筆數 {len(filtered_df)}")
-
-        grouped = filtered_df.groupby('證券代號')
         
-        for symbol, group_df in grouped:
-            #
-            clean_symbol = str(symbol).strip()
-            save_path = f"stock/database/twse/{clean_symbol}_twse_recent_data.csv"
-            group_df.to_csv(save_path, index=False, encoding="utf-8-sig")
-            
-        print(f"🎊 拆分完成！共處理 {len(grouped)} 檔個股。")
-        
-        # 最後清理大表
-        del raw_df, filtered_df, grouped
-        gc.collect()
-
-    async def fetch_specific_info(self, start_date: str, end_date: str):
-        """
-        Fetch recent stock trading data for the specific date range
-        - Store every 30 business days in a batch to avoid memory overflow
-
-        start_date and end_date should be in "YYYYMMDD" format
-        """
-
-        # check date format
-        try:
-            pd.to_datetime(start_date, format="%Y%m%d")
-            pd.to_datetime(end_date, format="%Y%m%d")
-        except ValueError:
-            print("❌ 日期格式錯誤，請使用 YYYYMMDD 格式")
-            return
-
-        date_list = pd.bdate_range(start=start_date, end=end_date).strftime("%Y%m%d").tolist()
-        print(f"🚀 Preparing to fetch data from {date_list[0]} to {date_list[-1]}, total {len(date_list)} business days...")
-
-        os.makedirs("stock/database/twse", exist_ok=True)
-        batch_size = 30  
-       
-        async with aiohttp.ClientSession() as session:
-            # Batch processing
-            for i in range(0, len(date_list), batch_size):
-                batch_dates = date_list[i : i + batch_size]
-                print(f"📦 Processing Batch：{batch_dates[0]} ~ {batch_dates[-1]} ({i//batch_size + 1} Batch)")
-
-                tasks = [self.fetch_daily_info(session, date) for date in batch_dates]
-                results = await asyncio.gather(*tasks)
-
-                batched_df_list = []
-
-                for df in results:
-                    if df is not None:
-                        batched_df_list.append(df)
-
-                        # clean up memory to avoid OOM error
-                        del df
-                        gc.collect()
-
-                if batched_df_list:
-                    batched_df = pd.concat(batched_df_list, ignore_index=True)
-                    batched_df.to_csv(self.twse_recent_data, index=False, encoding="utf-8-sig", mode='a', header=False)
-
-                del batched_df_list, results
-                gc.collect()
-
-        print(f"✅ 所有資料抓取完成，存檔至：{self.twse_recent_data}")
-
-        #  --- Second async process: separate data by stock symbol and save to individual csv files ---
-        print(f"🚀 Separating data by stock symbol...")
-        raw_df = pd.read_csv(self.twse_recent_data)
-    
-        filtered_df = raw_df[
-            (raw_df['證券代號'].str.isdigit()) & 
-            (~raw_df['證券名稱'].str.contains(self.exclude_pattern, regex=True)) &
-            (raw_df['證券代號'].str.len().between(4, 6))
-        ].copy()
-
-        print(f"🧹 過濾完成：原始筆數 {len(raw_df)} -> 過濾後筆數 {len(filtered_df)}")
-
-        grouped = filtered_df.groupby('證券代號')
-        
-        for symbol, group_df in grouped:
-            
-            clean_symbol = str(symbol).strip()
-            save_path = f"stock/database/twse/{clean_symbol}_twse_recent_data.csv"
-            group_df.to_csv(save_path, index=False, encoding="utf-8-sig")
-            
-        print(f"🎊 拆分完成！共處理 {len(grouped)} 檔個股。")
-        
-        # 最後清理大表
-        del raw_df, filtered_df, grouped
-        gc.collect()
-
+        return f"Successfully processed {len(date_list)} days"
 
 
 if __name__ == "__main__":
@@ -237,10 +138,4 @@ if __name__ == "__main__":
     twse = TWSE()    
 
     # fetch recent stock data
-    asyncio.run(twse.fetch_recent_info())
-
-    # update stock data for specific date range
-    # asyncio.run(twse.update_info(start_date="20260127", end_date="20260127"))
-
-    # separate data by stock symbol
-    # twse.seperate_by_symbol()
+    # asyncio.run(twse.process_range(start_date="20240101", end_date="20240626", for_update=False))

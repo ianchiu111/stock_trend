@@ -5,8 +5,6 @@ requests
 aiohttp 
 pandas
 pandas_ta
-
-# yfinance 
-# plotly 
-# openai 
-# requests
+flask
+flask_cors
+pytz

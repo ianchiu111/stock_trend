@@ -124,5 +124,9 @@ evaluation_results/
 *.zip
 *.ipynb
 
+# deploy secret
+.github/
+
+
 # keep until development is complete
 Trend.py

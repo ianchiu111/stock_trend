@@ -96,10 +96,12 @@ def fetch_data():
 def update_data():
     """
     每日更新：抓取當日資料 (或指定範圍)
+    body:{
+           "date": "YYYYMMDD" # default as today
+    }
     """
     try:
         data = request.json or {}
-        # 允許外部傳入日期，若無則預設今天
         target_date = data.get("date", pd.Timestamp.now().strftime("%Y%m%d"))
         
         loop = asyncio.new_event_loop()

@@ -1,0 +1,12 @@
+streamlit
+plotly
+matplotlib
+requests
+aiohttp 
+pandas
+pandas_ta
+
+# yfinance 
+# plotly 
+# openai 
+# requests

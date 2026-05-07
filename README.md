@@ -1,13 +1,14 @@
 
+
+
+
+
+
 # Welcome
 This project aims to build a custom stock tracking website.
 
 ## Website Demo
-<div align="center">
-  <video width="600" autoplay muted loop playsinline>
-    <source src="https://raw.githubusercontent.com/ianchiu111/stock_trend/main/images/demo.mp4" type="video/mp4">
-  </video>
-</div>
+https://github.com/user-attachments/assets/3f1055cd-6e3e-4df2-bd2d-94e0435acfb7
 
 ## Project Learnings
 

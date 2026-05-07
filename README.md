@@ -1,14 +1,10 @@
 
-
-
-
-
-
 # Welcome
 This project aims to build a custom stock tracking website.
 
 ## Website Demo
-https://github.com/user-attachments/assets/3f1055cd-6e3e-4df2-bd2d-94e0435acfb7
+https://github.com/user-attachments/assets/3329020c-a45e-42ed-b660-f5ea3cc8a02f
+
 
 ## Project Learnings
 

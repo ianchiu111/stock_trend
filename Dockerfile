@@ -18,9 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 複製專案所有原始碼到容器內
 COPY . .
 
-# 建立資料夾避免程式找不到路徑 (對應你程式碼中的路徑)
-RUN mkdir -p stock/database/twse
-
 # 給予啟動腳本執行權限
 RUN chmod +x startup.sh
 

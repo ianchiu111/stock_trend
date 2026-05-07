@@ -13,8 +13,7 @@ import asyncio
 from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
 
-from stock.twse import TWSE
-
+from stock.twse_service import TWSE
 
 # ====================================================
 twse = TWSE()

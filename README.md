@@ -23,6 +23,10 @@
 > Execute after preparing `Dockerfile`、`startup.sh` and repo files
 
 *   **`fly launch`**：Scan project rool and initialize App。 Generate `fly.toml` config after execution
+*   **`fly volumes create stock_storage --region nrt --count 1 --size 1`**
+    * `--count 1`： Establish two volumes
+    * `--region nrt`: set the region on Tokyo
+    * example: `fly volumes create stock_storage --region nrt --count 1 --size 1`
 
 ### 2. Update and Re-Deploy for the following time
 > Execute after every when modify and codes in the repo
@@ -35,8 +39,10 @@
 *   **`fly logs`**：Check logger in the container
 *   **`fly status`**：Check the status of the working machines
 *   **`fly open`**：Automatically open the app in browser
+*   **`fly machine stop --app <app name>`**: Suspend the app
+*   **`fly machine stop --app <app name>`**: Delete the app
 
-### 4. 資源管理
+### 4. Source Management
 *   **`fly m list`** (Virtual Machines List)：List all running virtual machine entities
 *   **`fly m restart <ID>`**：Manually restart a specific virtual machine entity
 

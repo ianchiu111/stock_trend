@@ -96,18 +96,25 @@ def update_data():
     """
     每日更新：抓取當日資料 (或指定範圍)
     body:{
-           "date": "YYYYMMDD" # default as today
+           "start_date": "YYYYMMDD" # optional, default as today
+           "end_date": "YYYYMMDD" # optional, default as today
+    }
+    example:
+    {
+        "start_date": "20240501",
+        "end_date": "20240503"
     }
     """
     try:
         data = request.json or {}
-        target_date = data.get("date", pd.Timestamp.now().strftime("%Y%m%d"))
+        start_date = data.get("start_date", pd.Timestamp.now().strftime("%Y%m%d"))
+        end_date = data.get("end_date", pd.Timestamp.now().strftime("%Y%m%d"))
         
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         # 使用 for_update=True 確保是追加到檔案末尾
         result = loop.run_until_complete(
-            twse.process_range(target_date, target_date, for_update=True)
+            twse.process_range(start_date=start_date, end_date=end_date, for_update=True)
         )
         loop.close()
 

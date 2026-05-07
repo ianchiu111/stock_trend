@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 1. 設定定時任務 (確保依照 TZ 變數執行的時間正確)[cite: 5, 9]
-echo "0 15 * * 1-5 curl -X POST http://localhost:5001/api/update_data >> /var/log/cron.log 2>&1" > /etc/cron.d/stock-cron
+echo "0 15 * * 1-5 curl -X POST http://localhost:5001/api/update_data -H \"Content-Type: application/json\" -d '{}' >> /var/log/cron.log 2>&1" > /etc/cron.d/stock-cron
 
 # 2. 啟動 Cron 服務[cite: 9]
 chmod 0644 /etc/cron.d/stock-cron

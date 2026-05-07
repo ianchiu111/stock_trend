@@ -46,10 +46,60 @@
 *   **`fly m list`** (Virtual Machines List)：List all running virtual machine entities
 *   **`fly m restart <ID>`**：Manually restart a specific virtual machine entity
 
-### Key files for deployment
+### 5. Key files for deployment
 | File Name | Key Point | 目的 |
 | :--- | :--- | :--- |
 | **`fly.toml`** | 包含 `[mounts]` 與兩組 `[[services]]` | 確保資料持久化並開放 80 (UI) 與 5001 (API) 埠口|
 | **`startup.sh`** | 加上 `--server.address=0.0.0.0` | 解決 `refused connection` 警告，讓外網可存取 |
 | **`Dockerfile`** | 使用 `FROM python:3.13-slim` | 與你目前的開發環境版本保持一致|
 | **`.dockerignore`** | 排除 `.venv` 與 `.git` | 縮小上傳體積，避免過多的無效傳輸|
+
+### 6. fly.toml 的撰寫說明
+- `app = 'stock-trace'` -> 設定 app name
+- `primary_region = 'nrt'` -> 設定伺服器定區
+- `min_machines_running = 1` -> 確保至少有一個 machine 工作，避免睡著
+- `[[services]]`
+    - `[http_service]` -> 屬於快捷語法，會在底層產生一個完整的 [[services]] 
+- `processes = ["app"] ` -> 指定這個服務或埠口對外開放時要套用到哪一個進程群組（Process Group）上
+    - 同一個專案可以把不同的工作拆成多個容器（VM）來跑，這時候就可以定義多個 processes。
+        - 一個負責網頁前端 (web)
+        - 一個負責後端 API (api)
+        - 一個負責背景定時任務 (worker)
+- example
+    ```yaml
+    app = 'stock-trace'            
+    primary_region = 'nrt'         
+
+    [build]
+
+
+    [env]
+    TZ = 'Asia/Taipei'
+
+    [http_service]                  
+    internal_port = 8501          
+    force_https = true
+    auto_stop_machines = 'stop'
+    auto_start_machines = true
+    min_machines_running = 1      
+    processes = ['app']
+
+    [[services]]
+    protocol = 'tcp'
+    internal_port = 5001
+    auto_stop_machines = 'stop'
+    auto_start_machines = true
+    min_machines_running = 1     
+    processes = ["app"]
+
+    [[services.ports]]
+        port = 5001
+        handlers = ["http"]
+
+
+    [[vm]]
+    memory = '1gb'
+    cpu_kind = 'shared'
+    cpus = 4
+    memory_mb = 1024
+    ```

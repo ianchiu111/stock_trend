@@ -17,15 +17,8 @@ primary_region = 'nrt'
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 0
-  processes = ['app']
-
-[[services]]
-  protocol = 'tcp'
-  internal_port = 8501
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
   min_machines_running = 1
+  processes = ['app']
 
 [[services]]
   protocol = 'tcp'
@@ -33,6 +26,12 @@ primary_region = 'nrt'
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 1
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 5001
+    handlers = ["tls", "http"]
+
 
 [[vm]]
   memory = '1gb'

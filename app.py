@@ -107,8 +107,10 @@ def update_data():
     """
     try:
         data = request.json or {}
-        start_date = data.get("start_date", pd.Timestamp.now().strftime("%Y%m%d"))
-        end_date = data.get("end_date", pd.Timestamp.now().strftime("%Y%m%d"))
+        taiwan_zone = datetime.now(pytz.timezone("Asia/Taipei"))
+        today_date = taiwan_zone.strftime("%Y%m%d")
+        start_date = data.get("start_date", today_date)
+        end_date = data.get("end_date", today_date)
         
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

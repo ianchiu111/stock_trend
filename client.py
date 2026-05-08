@@ -18,7 +18,7 @@ st.set_page_config(page_title="證券資訊儀表板", page_icon="📈", layout=
 # ==========================================
 # 2. Functions
 # ==========================================
-@st.cache_data
+@st.cache_data(ttl=3600)  # 緩存資料，1小時更新一次
 def load_data(symbol: str):
     file_path = f"stock/database/twse/{symbol}_twse_recent_data.csv"
     

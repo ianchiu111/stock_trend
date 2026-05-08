@@ -8,3 +8,6 @@ pandas_ta
 flask
 flask_cors
 pytz
+
+scikit-learn
+torch

@@ -133,10 +133,10 @@ class TWSE:
         return f"Successfully processed {len(date_list)} days"
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
     
-#     twse = TWSE()    
-#     asyncio.run(twse.process_range(start_date="20260507", end_date="20260507", for_update=True))
+    twse = TWSE()    
+    asyncio.run(twse.process_range(start_date="20260509", end_date="20260513", for_update=True))
     
     # fetch recent stock data
     # asyncio.run(twse.process_range(start_date="20240101", end_date="20240626", for_update=False))

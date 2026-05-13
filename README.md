@@ -9,9 +9,13 @@ https://github.com/user-attachments/assets/3329020c-a45e-42ed-b660-f5ea3cc8a02f
 ## Project Learnings
 
 1. Use `startup.sh` with `Dockerfile` to run three tasks in one container
-    1. Cron service: Daily update data.
-    2. Flask API: As backend server.
-    3. Streamlit UI: As fronend web.
+    1. `Cron service`: Daily update data.
+    2. `Flask API`: As backend server.
+    3. `Streamlit UI`: As fronend web.
+2. Open Sources
+    1. [TWSE](https://www.twse.com.tw/zh/index.html)
+    2. [FinMind](https://finmindtrade.com/analysis/#/data/document)
+    3. [臺灣證券交易所 OpenAPI - Swagger](https://openapi.twse.com.tw)
 
 ### Deploy on Fly.io by DockerFile
 1. Install **Flyctl** CMD tool with `brew install flyctl`

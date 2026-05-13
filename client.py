@@ -10,6 +10,10 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 
+from stock.finmind_service import FinMind
+from stock.stock_diagnosis import StockDiagnosis
+
+
 # ==========================================
 # 1. 頁面基本設定
 # ==========================================
@@ -70,6 +74,46 @@ def load_data(symbol: str):
         st.error(f"讀取資料時發生錯誤: {e}")
         return None
 
+def stock_diagnosis(symbol_input: str, start_date: str, end_date: str, user_query: str, uploaded_file: object) -> str:
+    """
+    根據股票數據 DataFrame 產出診斷報告的函式
+    """
+
+    finmind = FinMind()
+    finmind.getFinMindData(stock_id = symbol_input, start_date = start_date, end_date = end_date)
+
+    df = pd.read_csv(f'stock/database/finmind/{symbol_input}_stock_diagnosis.csv', dtype={'stock_id': str})
+    analyzer = StockDiagnosis(df)
+    report = analyzer.get_diagnosis_report()
+    suggestion = analyzer.get_AI_suggestion(report, user_query, uploaded_file)
+    print("Stock Diagnose on UI:\n", suggestion)
+
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(
+            """
+            <style>
+            .diagnosis-text {
+                font-size: 10px !important;
+                line-height: 1.5;
+            }
+            .diagnosis-text h3, .diagnosis-text h4 {
+                margin-top: 10px;
+                margin-bottom: 5px;
+                font-size: 10px !important; 
+            }
+            .diagnosis-text p, .diagnosis-text li {
+                font-size: 8px !important;
+                margin-bottom: 2px !important;
+            }
+            </style>
+            """, 
+            unsafe_allow_html=True
+        )
+
+    st.sidebar.markdown(f'<div class="diagnosis-text">', unsafe_allow_html=True)
+    st.sidebar.markdown(suggestion) 
+    st.sidebar.markdown('</div>', unsafe_allow_html=True)
+
 def load_explanation():
     """
     用來撰寫專有名詞說明的函式，讓使用者可以更了解圖表中各個指標的意義
@@ -102,7 +146,7 @@ def load_explanation():
 # 第二部分是文字說明區，讓我可以了解什麼是<某特殊專有名詞>
 # ==========================================
 st.sidebar.title("📈 證券分析參數設定")
-symbol_input = st.sidebar.text_input("輸入證券代碼", value="0050")
+symbol_input = st.sidebar.text_input("輸入證券代碼", value="2330")
 
 # 獲取資料
 df = load_data(symbol_input)
@@ -123,10 +167,30 @@ if df is not None and not df.empty:
         min_value=min_date,
         max_value=max_date
     )
-    
+
     # 根據日期篩選資料
     mask = (df.index.date >= start_date) & (df.index.date <= end_date)
     filtered_df = df.loc[mask]
+
+    # 使用 st.sidebar.form 將輸入區塊打包
+    with st.sidebar.form(key="diagnosis_form"):
+        user_query = st.text_input("想問的問題", placeholder="請輸入您想詢問的問題")
+        uploaded_file = st.file_uploader(
+            "上傳相關圖片 (optional)", 
+            type=["png", "jpg", "jpeg"],
+            help="上傳圖片會耗時較久，請耐心等候。"
+        )
+        
+        # 表單內部的送出按鈕
+        submit_button = st.form_submit_button(label="🔍 查詢")
+
+    # 只有當按鈕被按下時，才執行診斷邏輯
+    if submit_button:
+        if user_query and user_query.strip():
+            # 進行股票診斷
+            stock_diagnosis(symbol_input, start_date, end_date, user_query, uploaded_file)
+        else:
+            st.sidebar.warning("請先輸入您的問題再送出。")
 
     # ==========================================
     # 4. 主畫面 Dashboard 渲染

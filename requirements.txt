@@ -8,6 +8,7 @@ pandas_ta
 flask
 flask_cors
 pytz
-
+openai
 scikit-learn
 torch
+dotenv

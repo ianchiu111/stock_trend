@@ -2,4 +2,9 @@
 .git
 __pycache__
 .DS_Store
-images/> 
+
+images/*
+models/*
+price_prediction.py
+price_test.ipynb
+Trend.py
